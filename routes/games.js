@@ -2,6 +2,7 @@
 
 /** @type{import('fastify').FastifyPluginAsync<>} */
 import createError from '@fastify/error';
+import { config } from 'dotenv';
 export default async function products(app, options) {
     const InvalidProductError = createError('InvalidProductError', 'Produto Inválido.', 400);
 
@@ -12,7 +13,7 @@ export default async function products(app, options) {
     app.get('/games', 
         {
             config: {
-                logMe: true
+                requireAuthentication: true
             }
         }, 
         async (request, reply) => {
@@ -20,10 +21,14 @@ export default async function products(app, options) {
         }
     );
 
-    //não esta funcionando
-    app.get('/games/:id', async (request, reply) => {
+    //funcionando
+    app.get('/games/:id',{
+        config:{
+            requireAuthentication: true
+        }
+    }, async (request, reply) => {
         let id =  request.params.id;
-        let game = await games.findOne({_id: new app.mongo.ObjectId(id)});
+        let game = await games.findOne({_id: id});
         
         return game;
     });
@@ -34,13 +39,13 @@ export default async function products(app, options) {
             body: {
                 type: 'object',
                 properties: {
-                    id: { type: 'integer' },
+                    _id: { type: 'string' },
                     name: { type: 'string' },
                     notaGame: { type: 'integer' },
                     generoGame: { type: 'string' },
                     descGame: { type: 'string' }
                 },
-                required: ['name', 'notaGame', 'generoGame', 'descGame']
+                required: ['_id','name', 'notaGame', 'generoGame', 'descGame']
             }
         },
         config: {
@@ -62,26 +67,25 @@ export default async function products(app, options) {
     }, async (request, reply) => {
         let id =  request.params.id;
         
-        await games.deleteOne({_id: new app.mongo.ObjectId(id)});
+        await games.deleteOne({_id: id});
         
-        return reply.code(204).send();;
+        return reply.code(204).send();
     });
-    // TESTAR
+    // funcionando
     app.put('/games/:id', {
-        config: {
+       config:{
             requireAuthentication: true
-        }
+       }
     }, async (request, reply) => {
-        let id =  request.params.id;
-        let games = request.body;
-        
-        await games.updateOne({_id: new app.mongo.ObjectId(id)}, {
+        let id = request.params.id;
+        let game = request.body;
+
+        await games.updateOne({_id: id},{
             $set: {
-                name: games.name,
-                descGame: games.descGame
+                name: game.name,
+                descGame: game.descGame
             }
         });
-        
-        return reply.code(204).send();;
+        return reply.code(204).send();
     });
 }

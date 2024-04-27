@@ -1,7 +1,9 @@
 import { hash } from 'bcrypt';
+import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 
 export default async function newUser(app, options) {
+
     const users = app.mongo.db.collection('users');
 
     app.post('/register', {
@@ -9,15 +11,21 @@ export default async function newUser(app, options) {
             body: {
                 type: 'object',
                 properties: {
+                    _id: {type: 'string'},
                     username: { type: 'string' },
                     password: { type: 'string' }
                 },
-                required: ['username', 'password']
+                required: ["_id",'username', 'password']
             }
-        }
+        },
+        config: {
+            requireAuthentication: false
+        },
     }, async (request, reply) => {
-        const { username, password } = request.body;
+        const { _id, username, password } = request.body;
+
         const existingUser = await users.findOne({ username });
+
         if (existingUser) {
             reply.code(409).send({ message: 'Usuário já existe' });
             return;
@@ -25,15 +33,14 @@ export default async function newUser(app, options) {
 
         const hashedPassword = await hash(password, 10);
 
-
         const newUser = {
+            _id,
             username,
             password: hashedPassword
         };
         
-        const result = await users.insertOne(newUser);
-        const token = jwt.sign({ username: newUser.username }, 'secreto', { expiresIn: '1h' });
-       
-        reply.code(201).send({ token });
+        await users.insertOne(newUser);
+        reply.code(201).send();
     });
+
 }
